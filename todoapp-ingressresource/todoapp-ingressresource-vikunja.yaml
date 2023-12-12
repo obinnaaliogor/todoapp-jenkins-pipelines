@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: default
+  name: vikunja-ingress
+  annotations:
+    cert-manager.io/issuer: letsencrypt-vikunja
+    #this should match the cert manager resource name
+spec:
+  tls:
+  - hosts:
+    - todo.obinnaaliogor.xyz
+    secretName: letsencrypt-vikunja
+    #this should match the cert manager resource name
+  ingressClassName: nginx
+  rules:
+  - host: todo.obinnaaliogor.xyz
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: my-vikunja
+            port:
+              number: 8080
