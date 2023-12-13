@@ -10,7 +10,7 @@ pipeline {
         RELEASE_NAME = 'my-vikunja'
         CERT_MANAGER_HELM_CHART_VERSION = '1.13.2'
         AWS_DEFAULT_REGION = 'us-east-1'
-        TERRAFORM_ACTION = 'destroy'
+        TERRAFORM_ACTION = 'apply'
         REGION = 'us-east-1'
         AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
@@ -24,9 +24,14 @@ pipeline {
             }
         }
 
-   stage('Add Helm Repositories - Test') {
+    stage('Add Helm Repositories - Test') {
     steps {
         script {
+                    // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Add Helm Repositories - Test as TERRAFORM_ACTION is set to destroy"
+                return
+            }
             echo "Adding Helm repo: truecharts"
             sh "helm repo add truecharts https://charts.truecharts.org/"
             sh "helm repo add cert-manager https://charts.jetstack.io"
@@ -44,6 +49,11 @@ pipeline {
         stage('Validate Helm Repositories') {
             steps {
                 script {
+                     // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Validate Helm Repositories as TERRAFORM_ACTION is set to destroy"
+                return
+            }
                     sh 'helm repo ls'
                 }
             }
@@ -70,7 +80,13 @@ pipeline {
         stage('Update kube-config') {
             steps {
                 script {
+                    // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Update kube-config as TERRAFORM_ACTION is set to destroy"
+                return
+            }
                     sh "aws eks update-kubeconfig --name ${env.EKS_CLUSTER_NAME} --region ${env.REGION}"
+
                 }
             }
         }
@@ -78,9 +94,15 @@ pipeline {
         stage('Implement ebs-csi-driver for create pv creation') {
             steps {
                 script {
+                    // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Implement ebs-csi-driver for create pv creation as TERRAFORM_ACTION is set to destroy"
+                return
+            }
                     // Your terraform code should also have a policy called AmazonEBSCSIDriverPolicy
                     // added to the nodegroup that will allow EC2 to create PV
                     sh 'kubectl apply -k github.com/kubernetes-sigs/aws-ebs-csi-driver/deploy/kubernetes/overlays/stable/?ref=master'
+
                 }
             }
         }
@@ -88,6 +110,11 @@ pipeline {
         stage('Implement Ingress Controller') {
             steps {
                 script {
+                    // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Implement Ingress Controller as TERRAFORM_ACTION is set to destroy"
+                return
+            }
                     echo "Installing and upgrading NGINX Ingress Controller"
                     sh """
                         helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
@@ -107,6 +134,12 @@ pipeline {
         stage('Manual Intervention - Wait for DNS Update') {
             steps {
                 script {
+                    // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Manual Intervention - Wait for DNS Update as TERRAFORM_ACTION is set to destroy"
+                return
+            }
+
                     // Display a message to instruct the user to wait for DNS propagation
                     echo "Please wait for 5 seconds for DNS propagation. Verify that the hosted zone is pointing to the Ingress Controller."
 
@@ -122,6 +155,11 @@ pipeline {
         stage('Implement Cert Manager') {
             steps {
                 script {
+                    // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Implement Cert Manager as TERRAFORM_ACTION is set to destroy"
+                return
+            }
                     sh "helm upgrade --install cert-manager jetstack/cert-manager --version ${env.CERT_MANAGER_HELM_CHART_VERSION} \
                         --namespace cert-manager --create-namespace \
                         -f cert-manager-values-v${env.CERT_MANAGER_HELM_CHART_VERSION}.yaml"
@@ -142,6 +180,12 @@ pipeline {
     }
     steps {
         script {
+            // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Deploy Todo App as TERRAFORM_ACTION is set to destroy"
+                return
+            }
+
             // Add commands for deploying Todo app
             sh """
                 helm upgrade --install ${env.RELEASE_NAME} k8s-at-home/vikunja \
@@ -180,6 +224,11 @@ pipeline {
         stage('Ensure High Availability of Todoapp') {
             steps {
                 script {
+                    // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Ensure High Availability of Todoapp as TERRAFORM_ACTION is set to destroy"
+                return
+            }
                     // Deploy metrics server
                     echo "Deploying Metrics server"
                     sh "kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml"
@@ -199,6 +248,11 @@ pipeline {
         stage('Implement Cluster Autoscaler') {
             steps {
                 script {
+                    // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Implement Cluster Autoscaler as TERRAFORM_ACTION is set to destroy"
+                return
+            }
                     // Add commands for Cluster Autoscaler
                     sh "kubectl apply -f autoscaler.yaml"
                     sh "kubectl get pod -n kube-system"
@@ -213,6 +267,11 @@ pipeline {
         stage('Scaling Down Nodes') {
             steps {
                 script {
+                    // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Scaling Down Nodesp as TERRAFORM_ACTION is set to destroy"
+                return
+            }
                     // Validate scaling down nodes
                     sh "kubectl get nodes"
                     sh "kubectl scale deployment my-vikunja --replicas=1"
@@ -226,6 +285,11 @@ pipeline {
         stage('Implement Prometheus and Grafana') {
             steps {
                 script {
+                    // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Implement Prometheus and Grafana as TERRAFORM_ACTION is set to destroy"
+                return
+            }
                     // Install and upgrade Prometheus with alertmanager
                     sh "helm upgrade --install prometheus prometheus/prometheus \
                         --namespace monitoring --create-namespace -f alertmanager.yaml"
@@ -246,6 +310,11 @@ pipeline {
 stage('Validation and Testing') {
         steps {
             script {
+                // Skip this stage if TERRAFORM_ACTION is 'destroy'
+            if (env.TERRAFORM_ACTION == 'destroy') {
+                echo "Skipping Validation and Testing as TERRAFORM_ACTION is set to destroy"
+                return
+            }
                 // Validate HPA
                 sh 'kubectl get hpa'
 
