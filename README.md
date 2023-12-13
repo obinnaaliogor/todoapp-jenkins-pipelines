@@ -1,6 +1,6 @@
 Running Vikunja in a pipeline with jenkins:
 
-![Pipeline Result ]()
+![Pipeline Result ](jenkins.png)
 
 
 ```markdown
